@@ -11,8 +11,8 @@ from telegram import Bot
 
 app = Flask(__name__)
 
-BOT_TOKEN = "7977214804:AAEepDqlFc130dIRCEfV89hNCwxJf0xKVdw"
-CHAT_ID = "-1002562295376"
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+CHAT_ID = os.getenv("CHAT_ID")
 bot = Bot(token=BOT_TOKEN)
 
 DB_FILE = "database.json"
