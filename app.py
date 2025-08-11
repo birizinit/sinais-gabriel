@@ -1,7 +1,7 @@
 import json
 import os
 from flask import Flask, request, jsonify, send_from_directory
-from datetime import datetime
+from datetime import datetime, timedelta
 import threading
 import time
 import asyncio
@@ -121,7 +121,6 @@ Corretora: COWBEX ✅
     await asyncio.sleep(180)
     await enviar_resultado_async(d['ativo'], d['direcao'], d['resultado'])
 
-
 def scheduler_loop():
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
@@ -145,7 +144,6 @@ def scheduler_loop():
             loop.run_until_complete(asyncio.gather(*tasks))
 
         time.sleep(60)  # checa a cada 1 minuto
-
 
 threading.Thread(target=scheduler_loop, daemon=True).start()
 
