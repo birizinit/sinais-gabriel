@@ -18,6 +18,105 @@
             padding: 20px;
         }
         
+        /* Adicionando estilos para tela de login */
+        .login-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .login-box {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+        
+        .login-box h1 {
+            color: #2c3e50;
+            margin-bottom: 30px;
+            font-size: 2em;
+        }
+        
+        .login-form .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        
+        .login-form label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #34495e;
+        }
+        
+        .login-form input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e1e8ed;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        .login-form input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .login-btn {
+            width: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: transform 0.2s;
+            margin-top: 10px;
+        }
+        
+        .login-btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .login-error {
+            color: #e74c3c;
+            margin-top: 15px;
+            font-weight: 600;
+        }
+        
+        .logout-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: #e74c3c;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        
+        .logout-btn:hover {
+            background: #c0392b;
+        }
+        
+        .main-container {
+            display: none;
+            position: relative;
+        }
+        /* Fim dos estilos para tela de login */
+        
         .container {
             max-width: 1200px;
             margin: 0 auto;
@@ -211,83 +310,110 @@
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>🚀 Painel de Controle</h1>
-            <p>Sistema de Sinais de Trading Automatizado</p>
+    <!-- Adicionando tela de login -->
+    <div id="loginScreen" class="login-container">
+        <div class="login-box">
+            <h1>🔐 Login</h1>
+            <p style="color: #7f8c8d; margin-bottom: 30px;">Acesso ao Painel de Controle</p>
+            <form class="login-form" onsubmit="fazerLogin(event)">
+                <div class="form-group">
+                    <label for="username">Usuário:</label>
+                    <input type="text" id="username" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Senha:</label>
+                    <input type="password" id="password" required>
+                </div>
+                <button type="submit" class="login-btn">Entrar</button>
+                <div id="loginError" class="login-error" style="display: none;"></div>
+            </form>
         </div>
+    </div>
+    <!-- Fim da tela de login -->
+
+    <!-- Envolvendo o painel principal em uma div com ID -->
+    <div id="mainPanel" class="main-container">
+        <button class="logout-btn" onclick="fazerLogout()">Sair</button>
+        <!-- Fim do botão de logout -->
         
-        <div class="content">
-            <div class="stats">
-                <div class="stat-card">
-                    <h3 id="totalAtivos">0</h3>
-                    <p>Ativos Cadastrados</p>
-                </div>
-                <div class="stat-card">
-                    <h3 id="totalDisparos">0</h3>
-                    <p>Disparos Agendados</p>
-                </div>
-                <div class="stat-card">
-                    <h3 id="proximoDisparo">--:--</h3>
-                    <p>Próximo Disparo</p>
-                </div>
+        <div class="container">
+            <div class="header">
+                <h1>🚀 Painel de Controle</h1>
+                <p>Sistema de Sinais de Trading Automatizado</p>
             </div>
             
-            <div class="section">
-                <h2>📈 Adicionar Novo Ativo</h2>
-                <div class="form-group">
-                    <label for="novoAtivo">Nome do Ativo (ex: BTC/USD):</label>
-                    <input type="text" id="novoAtivo" placeholder="Digite o nome do ativo">
+            <div class="content">
+                <div class="stats">
+                    <div class="stat-card">
+                        <h3 id="totalAtivos">0</h3>
+                        <p>Ativos Cadastrados</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3 id="totalDisparos">0</h3>
+                        <p>Disparos Agendados</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3 id="proximoDisparo">--:--</h3>
+                        <p>Próximo Disparo</p>
+                    </div>
                 </div>
-                <button class="btn" onclick="adicionarAtivo()">Adicionar Ativo</button>
-            </div>
-            
-            <div class="section">
-                <h2>⏰ Agendar Novo Disparo</h2>
-                <div class="form-group">
-                    <label for="horario">Horário (HH:MM):</label>
-                    <input type="time" id="horario">
+                
+                <div class="section">
+                    <h2>📈 Adicionar Novo Ativo</h2>
+                    <div class="form-group">
+                        <label for="novoAtivo">Nome do Ativo (ex: BTC/USD):</label>
+                        <input type="text" id="novoAtivo" placeholder="Digite o nome do ativo">
+                    </div>
+                    <button class="btn" onclick="adicionarAtivo()">Adicionar Ativo</button>
                 </div>
-                <div class="form-group">
-                    <label for="ativo">Ativo:</label>
-                    <select id="ativo">
-                        <option value="">Selecione um ativo</option>
-                    </select>
+                
+                <div class="section">
+                    <h2>⏰ Agendar Novo Disparo</h2>
+                    <div class="form-group">
+                        <label for="horario">Horário (HH:MM):</label>
+                        <input type="time" id="horario">
+                    </div>
+                    <div class="form-group">
+                        <label for="ativo">Ativo:</label>
+                        <select id="ativo">
+                            <option value="">Selecione um ativo</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="direcao">Direção:</label>
+                        <select id="direcao">
+                            <option value="">Selecione a direção</option>
+                            <option value="COMPRA">🟢 COMPRA</option>
+                            <option value="VENDA">🔴 VENDA</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="resultado">Resultado Esperado:</label>
+                        <select id="resultado">
+                            <option value="">Selecione o resultado</option>
+                            <option value="WIN">✅ WIN</option>
+                            <option value="LOSS">❌ LOSS</option>
+                        </select>
+                    </div>
+                    <button class="btn" onclick="agendarDisparo()">Agendar Disparo</button>
                 </div>
-                <div class="form-group">
-                    <label for="direcao">Direção:</label>
-                    <select id="direcao">
-                        <option value="">Selecione a direção</option>
-                        <option value="COMPRA">🟢 COMPRA</option>
-                        <option value="VENDA">🔴 VENDA</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="resultado">Resultado Esperado:</label>
-                    <select id="resultado">
-                        <option value="">Selecione o resultado</option>
-                        <option value="WIN">✅ WIN</option>
-                        <option value="LOSS">❌ LOSS</option>
-                    </select>
-                </div>
-                <button class="btn" onclick="agendarDisparo()">Agendar Disparo</button>
-            </div>
-            
-            <div class="section">
-                <h2>📊 Disparos Agendados</h2>
-                <div class="table-container">
-                    <table id="tabelaDisparos">
-                        <thead>
-                            <tr>
-                                <th>Horário</th>
-                                <th>Ativo</th>
-                                <th>Direção</th>
-                                <th>Resultado</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                        </tbody>
-                    </table>
+                
+                <div class="section">
+                    <h2>📊 Disparos Agendados</h2>
+                    <div class="table-container">
+                        <table id="tabelaDisparos">
+                            <thead>
+                                <tr>
+                                    <th>Horário</th>
+                                    <th>Ativo</th>
+                                    <th>Direção</th>
+                                    <th>Resultado</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
@@ -295,6 +421,52 @@
 
     <script>
         let alertTimeout;
+
+        function verificarLogin() {
+            const loggedIn = localStorage.getItem('tradingPanelLoggedIn');
+            if (loggedIn === 'true') {
+                mostrarPainel();
+            } else {
+                mostrarLogin();
+            }
+        }
+
+        function mostrarLogin() {
+            document.getElementById('loginScreen').style.display = 'flex';
+            document.getElementById('mainPanel').style.display = 'none';
+        }
+
+        function mostrarPainel() {
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('mainPanel').style.display = 'block';
+            carregarAtivos();
+            carregarDisparos();
+        }
+
+        function fazerLogin(event) {
+            event.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const errorDiv = document.getElementById('loginError');
+
+            if (username === 'admin' && password === 'caldasadmin') {
+                localStorage.setItem('tradingPanelLoggedIn', 'true');
+                mostrarPainel();
+                errorDiv.style.display = 'none';
+            } else {
+                errorDiv.textContent = 'Usuário ou senha incorretos!';
+                errorDiv.style.display = 'block';
+                document.getElementById('password').value = '';
+            }
+        }
+
+        function fazerLogout() {
+            localStorage.removeItem('tradingPanelLoggedIn');
+            document.getElementById('username').value = '';
+            document.getElementById('password').value = '';
+            mostrarLogin();
+        }
+        // Fim das funções de login e logout
 
         function mostrarAlerta(mensagem, tipo = 'success') {
             const alertDiv = document.createElement('div');
@@ -431,16 +603,17 @@
             }
         }
 
-        // Carregar dados ao inicializar
         document.addEventListener('DOMContentLoaded', function() {
-            carregarAtivos();
-            carregarDisparos();
+            verificarLogin();
             
-            // Atualizar dados a cada 30 segundos
+            // Atualizar dados a cada 30 segundos (apenas se logado)
             setInterval(() => {
-                carregarDisparos();
+                if (localStorage.getItem('tradingPanelLoggedIn') === 'true') {
+                    carregarDisparos();
+                }
             }, 30000);
         });
+        // Fim da modificação da inicialização
     </script>
 </body>
 </html>
