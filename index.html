@@ -1,213 +1,446 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Painel Admin Sinais</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      max-width: 700px;
-      margin: 20px auto;
-      background: #f5f7fa;
-      color: #222;
-    }
-    h1 {
-      text-align: center;
-      margin-bottom: 1rem;
-      color: #2c3e50;
-    }
-    label {
-      font-weight: bold;
-      margin-top: 1rem;
-      display: block;
-    }
-    input, select, button {
-      padding: 8px 12px;
-      font-size: 1rem;
-      margin-top: 6px;
-      width: 100%;
-      box-sizing: border-box;
-      border-radius: 4px;
-      border: 1px solid #ccc;
-    }
-    button {
-      background-color: #3498db;
-      color: white;
-      cursor: pointer;
-      border: none;
-      margin-top: 1rem;
-    }
-    button:hover {
-      background-color: #2980b9;
-    }
-    .container {
-      background: white;
-      padding: 1rem 2rem 2rem 2rem;
-      border-radius: 6px;
-      box-shadow: 0 2px 10px rgb(0 0 0 / 0.1);
-    }
-    table {
-      width: 100%;
-      margin-top: 2rem;
-      border-collapse: collapse;
-    }
-    th, td {
-      padding: 8px;
-      border-bottom: 1px solid #ddd;
-      text-align: left;
-    }
-    th {
-      background-color: #3498db;
-      color: white;
-    }
-    .msg {
-      margin-top: 1rem;
-      font-weight: bold;
-      color: green;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Controle - Sinais de Trading</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+        
+        .content {
+            padding: 40px;
+        }
+        
+        .section {
+            margin-bottom: 40px;
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 10px;
+            border-left: 5px solid #667eea;
+        }
+        
+        .section h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #34495e;
+        }
+        
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e1e8ed;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .table-container {
+            overflow-x: auto;
+            margin-top: 20px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        th, td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #e1e8ed;
+        }
+        
+        th {
+            background: #2c3e50;
+            color: white;
+            font-weight: 600;
+        }
+        
+        tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .status {
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .status.win {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status.loss {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .status.compra {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        
+        .status.venda {
+            background: #f5c6cb;
+            color: #721c24;
+        }
+        
+        .alert {
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+        
+        .alert.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .alert.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .stat-card h3 {
+            color: #667eea;
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+        
+        .stat-card p {
+            color: #7f8c8d;
+            font-weight: 600;
+        }
+    </style>
 </head>
 <body>
-  <h1>Painel Administrativo de Sinais</h1>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 Painel de Controle</h1>
+            <p>Sistema de Sinais de Trading Automatizado</p>
+        </div>
+        
+        <div class="content">
+            <div class="stats">
+                <div class="stat-card">
+                    <h3 id="totalAtivos">0</h3>
+                    <p>Ativos Cadastrados</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="totalDisparos">0</h3>
+                    <p>Disparos Agendados</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="proximoDisparo">--:--</h3>
+                    <p>Próximo Disparo</p>
+                </div>
+            </div>
+            
+            <div class="section">
+                <h2>📈 Adicionar Novo Ativo</h2>
+                <div class="form-group">
+                    <label for="novoAtivo">Nome do Ativo (ex: BTC/USD):</label>
+                    <input type="text" id="novoAtivo" placeholder="Digite o nome do ativo">
+                </div>
+                <button class="btn" onclick="adicionarAtivo()">Adicionar Ativo</button>
+            </div>
+            
+            <div class="section">
+                <h2>⏰ Agendar Novo Disparo</h2>
+                <div class="form-group">
+                    <label for="horario">Horário (HH:MM):</label>
+                    <input type="time" id="horario">
+                </div>
+                <div class="form-group">
+                    <label for="ativo">Ativo:</label>
+                    <select id="ativo">
+                        <option value="">Selecione um ativo</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="direcao">Direção:</label>
+                    <select id="direcao">
+                        <option value="">Selecione a direção</option>
+                        <option value="COMPRA">🟢 COMPRA</option>
+                        <option value="VENDA">🔴 VENDA</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="resultado">Resultado Esperado:</label>
+                    <select id="resultado">
+                        <option value="">Selecione o resultado</option>
+                        <option value="WIN">✅ WIN</option>
+                        <option value="LOSS">❌ LOSS</option>
+                    </select>
+                </div>
+                <button class="btn" onclick="agendarDisparo()">Agendar Disparo</button>
+            </div>
+            
+            <div class="section">
+                <h2>📊 Disparos Agendados</h2>
+                <div class="table-container">
+                    <table id="tabelaDisparos">
+                        <thead>
+                            <tr>
+                                <th>Horário</th>
+                                <th>Ativo</th>
+                                <th>Direção</th>
+                                <th>Resultado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
 
-  <div class="container" id="ativos-container">
-    <h2>Adicionar Novo Ativo</h2>
-    <label for="novo-ativo">Nome do Ativo:</label>
-    <input type="text" id="novo-ativo" placeholder="Ex: ADA/USDT" />
-    <button id="btn-add-ativo">Adicionar Ativo</button>
-    <p class="msg" id="msg-ativo"></p>
-  </div>
+    <script>
+        let alertTimeout;
 
-  <div class="container" id="disparos-container">
-    <h2>Agendar Novo Disparo</h2>
-    <label for="select-ativo">Ativo:</label>
-    <select id="select-ativo"></select>
+        function mostrarAlerta(mensagem, tipo = 'success') {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert ${tipo}`;
+            alertDiv.textContent = mensagem;
+            
+            const content = document.querySelector('.content');
+            content.insertBefore(alertDiv, content.firstChild);
+            
+            if (alertTimeout) clearTimeout(alertTimeout);
+            alertTimeout = setTimeout(() => {
+                alertDiv.remove();
+            }, 5000);
+        }
 
-    <label for="horario">Horário (HH:MM):</label>
-    <input type="time" id="horario" required />
+        async function carregarAtivos() {
+            try {
+                const response = await fetch('/api/ativos');
+                const ativos = await response.json();
+                
+                const select = document.getElementById('ativo');
+                select.innerHTML = '<option value="">Selecione um ativo</option>';
+                
+                ativos.forEach(ativo => {
+                    const option = document.createElement('option');
+                    option.value = ativo;
+                    option.textContent = ativo;
+                    select.appendChild(option);
+                });
+                
+                document.getElementById('totalAtivos').textContent = ativos.length;
+            } catch (error) {
+                mostrarAlerta('Erro ao carregar ativos: ' + error.message, 'error');
+            }
+        }
 
-    <label for="direcao">Direção:</label>
-    <select id="direcao">
-      <option value="COMPRA">COMPRA</option>
-      <option value="VENDA">VENDA</option>
-    </select>
+        async function carregarDisparos() {
+            try {
+                const response = await fetch('/api/disparos');
+                const disparos = await response.json();
+                
+                const tbody = document.querySelector('#tabelaDisparos tbody');
+                tbody.innerHTML = '';
+                
+                disparos.forEach(disparo => {
+                    const row = tbody.insertRow();
+                    row.innerHTML = `
+                        <td>${disparo.horario}</td>
+                        <td>${disparo.ativo}</td>
+                        <td><span class="status ${disparo.direcao.toLowerCase()}">${disparo.direcao === 'COMPRA' ? '🟢' : '🔴'} ${disparo.direcao}</span></td>
+                        <td><span class="status ${disparo.resultado.toLowerCase()}">${disparo.resultado === 'WIN' ? '✅' : '❌'} ${disparo.resultado}</span></td>
+                    `;
+                });
+                
+                document.getElementById('totalDisparos').textContent = disparos.length;
+                
+                // Encontrar próximo disparo
+                const agora = new Date();
+                const horaAtual = agora.getHours().toString().padStart(2, '0') + ':' + agora.getMinutes().toString().padStart(2, '0');
+                
+                const proximosDisparos = disparos
+                    .filter(d => d.horario >= horaAtual)
+                    .sort((a, b) => a.horario.localeCompare(b.horario));
+                
+                if (proximosDisparos.length > 0) {
+                    document.getElementById('proximoDisparo').textContent = proximosDisparos[0].horario;
+                } else {
+                    document.getElementById('proximoDisparo').textContent = '--:--';
+                }
+                
+            } catch (error) {
+                mostrarAlerta('Erro ao carregar disparos: ' + error.message, 'error');
+            }
+        }
 
-    <label for="resultado">Resultado:</label>
-    <select id="resultado">
-      <option value="WIN">WIN</option>
-      <option value="LOSS">LOSS</option>
-    </select>
+        async function adicionarAtivo() {
+            const ativo = document.getElementById('novoAtivo').value.trim();
+            if (!ativo) {
+                mostrarAlerta('Por favor, digite o nome do ativo.', 'error');
+                return;
+            }
 
-    <button id="btn-agendar">Agendar Disparo</button>
-    <p class="msg" id="msg-disparo"></p>
-  </div>
+            try {
+                const response = await fetch('/api/ativos', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ativo })
+                });
 
-  <div class="container" id="lista-disparos-container">
-    <h2>Disparos Agendados</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>Horário</th>
-          <th>Ativo</th>
-          <th>Direção</th>
-          <th>Resultado</th>
-        </tr>
-      </thead>
-      <tbody id="lista-disparos"></tbody>
-    </table>
-  </div>
+                const result = await response.json();
+                if (response.ok) {
+                    mostrarAlerta('Ativo adicionado com sucesso!');
+                    document.getElementById('novoAtivo').value = '';
+                    carregarAtivos();
+                } else {
+                    mostrarAlerta(result.message, 'error');
+                }
+            } catch (error) {
+                mostrarAlerta('Erro ao adicionar ativo: ' + error.message, 'error');
+            }
+        }
 
-  <script>
-    async function carregarAtivos() {
-      const res = await fetch('/api/ativos');
-      const ativos = await res.json();
-      const select = document.getElementById('select-ativo');
-      select.innerHTML = '';
-      ativos.forEach(a => {
-        const option = document.createElement('option');
-        option.value = a;
-        option.textContent = a;
-        select.appendChild(option);
-      });
-    }
+        async function agendarDisparo() {
+            const horario = document.getElementById('horario').value;
+            const ativo = document.getElementById('ativo').value;
+            const direcao = document.getElementById('direcao').value;
+            const resultado = document.getElementById('resultado').value;
 
-    async function carregarDisparos() {
-      const res = await fetch('/api/disparos');
-      const disparos = await res.json();
-      const tbody = document.getElementById('lista-disparos');
-      tbody.innerHTML = '';
-      disparos.forEach(d => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${d.horario}</td>
-          <td>${d.ativo}</td>
-          <td>${d.direcao}</td>
-          <td>${d.resultado}</td>
-        `;
-        tbody.appendChild(tr);
-      });
-    }
+            if (!horario || !ativo || !direcao || !resultado) {
+                mostrarAlerta('Por favor, preencha todos os campos.', 'error');
+                return;
+            }
 
-    document.getElementById('btn-add-ativo').addEventListener('click', async () => {
-      const novoAtivo = document.getElementById('novo-ativo').value.trim();
-      const msg = document.getElementById('msg-ativo');
-      msg.textContent = '';
-      if (!novoAtivo) {
-        msg.style.color = 'red';
-        msg.textContent = 'Digite o nome do ativo';
-        return;
-      }
-      const res = await fetch('/api/ativos', {
-        method: 'POST',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({ativo: novoAtivo})
-      });
-      if (res.ok) {
-        msg.style.color = 'green';
-        msg.textContent = 'Ativo adicionado com sucesso!';
-        document.getElementById('novo-ativo').value = '';
-        await carregarAtivos();
-      } else {
-        const data = await res.json();
-        msg.style.color = 'red';
-        msg.textContent = data.message || 'Erro ao adicionar ativo';
-      }
-    });
+            try {
+                const response = await fetch('/api/disparos', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ horario, ativo, direcao, resultado })
+                });
 
-    document.getElementById('btn-agendar').addEventListener('click', async () => {
-      const horario = document.getElementById('horario').value;
-      const ativo = document.getElementById('select-ativo').value;
-      const direcao = document.getElementById('direcao').value;
-      const resultado = document.getElementById('resultado').value;
-      const msg = document.getElementById('msg-disparo');
-      msg.textContent = '';
+                const result = await response.json();
+                if (response.ok) {
+                    mostrarAlerta('Disparo agendado com sucesso!');
+                    document.getElementById('horario').value = '';
+                    document.getElementById('ativo').value = '';
+                    document.getElementById('direcao').value = '';
+                    document.getElementById('resultado').value = '';
+                    carregarDisparos();
+                } else {
+                    mostrarAlerta(result.message, 'error');
+                }
+            } catch (error) {
+                mostrarAlerta('Erro ao agendar disparo: ' + error.message, 'error');
+            }
+        }
 
-      if (!horario) {
-        msg.style.color = 'red';
-        msg.textContent = 'Selecione o horário';
-        return;
-      }
-      const res = await fetch('/api/disparos', {
-        method: 'POST',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({horario, ativo, direcao, resultado})
-      });
-      if (res.ok) {
-        msg.style.color = 'green';
-        msg.textContent = 'Disparo agendado com sucesso!';
-        document.getElementById('horario').value = '';
-        await carregarDisparos();
-      } else {
-        const data = await res.json();
-        msg.style.color = 'red';
-        msg.textContent = data.message || 'Erro ao agendar disparo';
-      }
-    });
-
-    // Carrega dados na inicialização
-    carregarAtivos();
-    carregarDisparos();
-  </script>
+        // Carregar dados ao inicializar
+        document.addEventListener('DOMContentLoaded', function() {
+            carregarAtivos();
+            carregarDisparos();
+            
+            // Atualizar dados a cada 30 segundos
+            setInterval(() => {
+                carregarDisparos();
+            }, 30000);
+        });
+    </script>
 </body>
 </html>
