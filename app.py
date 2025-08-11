@@ -88,9 +88,10 @@ async def enviar_resultado_async(ativo, direcao, resultado):
         await enviar_mensagem(mensagem_derrota)
 
 async def enviar_sinal_programado(d):
-    # calcula quantos segundos faltam para o horário do disparo
     agora = datetime.now(ZoneInfo("America/Sao_Paulo"))
-    horario_obj = datetime.strptime(d["horario"], "%H:%M").replace(year=agora.year, month=agora.month, day=agora.day, tzinfo=ZoneInfo("America/Sao_Paulo"))
+    horario_obj = datetime.strptime(d["horario"], "%H:%M").replace(
+        year=agora.year, month=agora.month, day=agora.day, tzinfo=ZoneInfo("America/Sao_Paulo")
+    )
     segundos_ate_envio = (horario_obj - agora).total_seconds()
     if segundos_ate_envio < 0:
         # horário já passou hoje, não envia
@@ -98,7 +99,6 @@ async def enviar_sinal_programado(d):
 
     await asyncio.sleep(segundos_ate_envio)
 
-    # Monta e envia a mensagem do sinal
     mensagem = f"""📊 *OPERAÇÃO CONFIRMADA*
 Corretora: COWBEX ✅
 
@@ -117,33 +117,67 @@ Corretora: COWBEX ✅
 """
     await enviar_mensagem(mensagem)
 
-    # Espera 1 min após o 2º gale para enviar resultado (total 3 min)
+    # Espera 3 minutos para enviar o resultado após o disparo
     await asyncio.sleep(180)
     await enviar_resultado_async(d['ativo'], d['direcao'], d['resultado'])
+
+# Função para enviar sinais aleatórios por hora (3 a 4 sinais entre 9h e 23h)
+async def enviar_sinais_aleatorios_por_hora(ativo_list):
+    agora = datetime.now(ZoneInfo("America/Sao_Paulo"))
+    hora_atual = agora.hour
+
+    if 9 <= hora_atual < 23:
+        qtd_sinais = random.choice([3, 4])
+        minutos_disparos = sorted(random.sample(range(60), qtd_sinais))
+        tasks = []
+        for minuto in minutos_disparos:
+            horario_sinal = datetime(agora.year, agora.month, agora.day, hora_atual, minuto, tzinfo=ZoneInfo("America/Sao_Paulo"))
+            ativo = random.choice(ativo_list)
+            direcao = random.choice(["COMPRA", "VENDA"])
+            resultado = "WIN" if random.random() < 0.8 else "LOSS"
+
+            d = {
+                "horario": horario_sinal.strftime("%H:%M"),
+                "ativo": ativo,
+                "direcao": direcao,
+                "resultado": resultado
+            }
+            tasks.append(enviar_sinal_programado(d))
+        if tasks:
+            await asyncio.gather(*tasks)
 
 def scheduler_loop():
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
 
+    ativo_list = load_db().get("ativos", [])
+
+    ultima_hora_sinais_aleatorios = None
+
     while True:
         db = load_db()
         agora = datetime.now(ZoneInfo("America/Sao_Paulo"))
 
-        # Remove disparos do dia anterior (caso)
+        # Disparos agendados originais
         disparos = db.get("disparos", [])
-
-        # Roda as tarefas pendentes para disparar os sinais agendados para hoje
         tasks = []
         for d in disparos:
-            horario_obj = datetime.strptime(d["horario"], "%H:%M").replace(year=agora.year, month=agora.month, day=agora.day, tzinfo=ZoneInfo("America/Sao_Paulo"))
-            # Se já passou, não agenda mais
+            horario_obj = datetime.strptime(d["horario"], "%H:%M").replace(
+                year=agora.year, month=agora.month, day=agora.day, tzinfo=ZoneInfo("America/Sao_Paulo")
+            )
             if (horario_obj - agora).total_seconds() >= 0:
                 tasks.append(enviar_sinal_programado(d))
 
         if tasks:
             loop.run_until_complete(asyncio.gather(*tasks))
 
-        time.sleep(60)  # checa a cada 1 minuto
+        # Envia sinais aleatórios 1 vez por hora entre 9 e 23h
+        if ultima_hora_sinais_aleatorios != agora.hour:
+            ultima_hora_sinais_aleatorios = agora.hour
+            if 9 <= agora.hour < 23:
+                loop.run_until_complete(enviar_sinais_aleatorios_por_hora(ativo_list))
+
+        time.sleep(60)
 
 threading.Thread(target=scheduler_loop, daemon=True).start()
 
