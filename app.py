@@ -121,6 +121,98 @@ Corretora: COWBEX ✅
     await asyncio.sleep(180)
     await enviar_resultado_async(d['ativo'], d['direcao'], d['resultado'])
 
+async def enviar_sinal_automatico():
+    db = load_db()
+    ativos = db.get("ativos", [])
+    
+    if not ativos:
+        return
+    
+    # Seleciona ativo e direção aleatórios
+    ativo = random.choice(ativos)
+    direcao = random.choice(["COMPRA", "VENDA"])
+    
+    # 80% chance de WIN, 20% chance de LOSS
+    resultado = "WIN" if random.random() < 0.8 else "LOSS"
+    
+    # Horário atual
+    agora = datetime.now(ZoneInfo("America/Sao_Paulo"))
+    horario = agora.strftime("%H:%M")
+    
+    # Monta e envia a mensagem do sinal
+    mensagem = f"""📊 *OPERAÇÃO CONFIRMADA*
+Corretora: COWBEX ✅
+
+🥇 *Moeda* = {ativo}
+⏰ *Expiração* = 1 Minuto
+📌 *Entrada* = {horario}
+
+{('🟢 COMPRA' if direcao == 'COMPRA' else '🔴 VENDA')}
+
+⚠️ *Proteção 1:* {(agora + timedelta(minutes=1)).strftime('%H:%M')}
+⚠️ *Proteção 2:* {(agora + timedelta(minutes=2)).strftime('%H:%M')}
+
+➡️ [Clique aqui para acessar a corretora](https://bit.ly/cadastre-corretora-segura)
+
+❓ [Não sabe pegar os sinais? Clique aqui](https://t.me/c/2509048940/28)
+"""
+    await enviar_mensagem(mensagem)
+    
+    # Espera 3 minutos para enviar resultado
+    await asyncio.sleep(180)
+    await enviar_resultado_async(ativo, direcao, resultado)
+
+def sinais_automaticos_loop():
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    
+    while True:
+        agora = datetime.now(ZoneInfo("America/Sao_Paulo"))
+        hora_atual = agora.hour
+        
+        # Verifica se está no horário de funcionamento (9h às 23h)
+        if 9 <= hora_atual < 23:
+            # Gera de 3 a 4 sinais por hora
+            sinais_por_hora = random.randint(3, 4)
+            
+            # Calcula intervalos aleatórios dentro da hora
+            intervalos = []
+            for _ in range(sinais_por_hora):
+                # Gera minutos aleatórios dentro da hora atual
+                minutos_aleatorios = random.randint(0, 59)
+                proximo_sinal = agora.replace(minute=minutos_aleatorios, second=0, microsecond=0)
+                
+                # Se o horário já passou, agenda para a próxima hora
+                if proximo_sinal <= agora:
+                    proximo_sinal = proximo_sinal + timedelta(hours=1)
+                
+                intervalos.append(proximo_sinal)
+            
+            # Ordena os intervalos
+            intervalos.sort()
+            
+            # Agenda os sinais
+            tasks = []
+            for horario_sinal in intervalos:
+                segundos_ate_sinal = (horario_sinal - agora).total_seconds()
+                if segundos_ate_sinal > 0:
+                    async def enviar_com_delay(delay):
+                        await asyncio.sleep(delay)
+                        await enviar_sinal_automatico()
+                    
+                    tasks.append(enviar_com_delay(segundos_ate_sinal))
+            
+            if tasks:
+                try:
+                    loop.run_until_complete(asyncio.gather(*tasks))
+                except Exception as e:
+                    print(f"Erro ao enviar sinais automáticos: {e}")
+        
+        # Espera até o início da próxima hora
+        proxima_hora = (agora + timedelta(hours=1)).replace(minute=0, second=0, microsecond=0)
+        segundos_ate_proxima_hora = (proxima_hora - agora).total_seconds()
+        time.sleep(max(60, segundos_ate_proxima_hora))
+
 def scheduler_loop():
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
@@ -146,9 +238,9 @@ def scheduler_loop():
         time.sleep(60)  # checa a cada 1 minuto
 
 threading.Thread(target=scheduler_loop, daemon=True).start()
+threading.Thread(target=sinais_automaticos_loop, daemon=True).start()
 
 if __name__ == '__main__':
     port = int(os.getenv('PORT', 5000))
     debug = os.getenv('FLASK_DEBUG', '0') == '1'
     app.run(host='0.0.0.0', port=port, debug=debug)
-
