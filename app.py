@@ -74,10 +74,13 @@ async def enviar_mensagem(texto):
     await bot.send_message(chat_id=CHAT_ID, text=texto, parse_mode="Markdown")
 
 async def enviar_resultado_async(ativo, direcao, resultado):
+    print(f"Enviando resultado: {resultado} para {ativo} {direcao}")  # Debug
+    
     if resultado == "WIN":
         sticker_win = "CAACAgEAAxkBAi1jHGiaaHZB7SG-0V7xeSFmIjMhEnRlAAKmBgACsFWZRmsygMkofbBeNgQ"
         await bot.send_sticker(chat_id=CHAT_ID, sticker=sticker_win)
-    else:
+        print("Sticker de vitória enviado")  # Debug
+    elif resultado == "LOSS":
         mensagem_derrota = (
             "DEU F TROPA! Siga o gerenciamento!\n\n"
             "Siga o gerenciamento família, saiu totalmente do padrão.\n\n"
@@ -86,7 +89,9 @@ async def enviar_resultado_async(ativo, direcao, resultado):
             "Não respeitou esse safado, bora pra próxima"
         )
         await enviar_mensagem(mensagem_derrota)
-
+        print("Mensagem de derrota enviada")  # Debug
+    else:
+        print(f"Resultado inválido: {resultado}")  # Debug
 async def enviar_sinal_programado(d):
     # calcula quantos segundos faltam para o horário do disparo
     agora = datetime.now(ZoneInfo("America/Sao_Paulo"))
