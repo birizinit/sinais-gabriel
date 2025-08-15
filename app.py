@@ -17,6 +17,9 @@ bot = Bot(token=BOT_TOKEN)
 
 DB_FILE = "database.json"
 
+ultimo_sinal_automatico = None
+INTERVALO_MINIMO_MINUTOS = 12  # Tempo mínimo entre sinais automáticos
+
 # Cria o arquivo JSON se não existir
 if not os.path.exists(DB_FILE):
     with open(DB_FILE, "w") as f:
@@ -139,11 +142,23 @@ Corretora: COWBEX ✅
     await enviar_resultado_async(d['ativo'], d['direcao'], d['resultado'])
 
 async def enviar_sinal_automatico():
+    global ultimo_sinal_automatico
+    
+    agora = datetime.now(ZoneInfo("America/Sao_Paulo"))
+    
+    if ultimo_sinal_automatico:
+        tempo_desde_ultimo = (agora - ultimo_sinal_automatico).total_seconds() / 60  # em minutos
+        if tempo_desde_ultimo < INTERVALO_MINIMO_MINUTOS:
+            print(f"[DEBUG] Sinal automático bloqueado. Faltam {INTERVALO_MINIMO_MINUTOS - tempo_desde_ultimo:.1f} minutos")
+            return
+    
     db = load_db()
     ativos = db.get("ativos", [])
     
     if not ativos:
         return
+    
+    ultimo_sinal_automatico = agora
     
     # Seleciona ativo e direção aleatórios
     ativo = random.choice(ativos)
@@ -152,7 +167,6 @@ async def enviar_sinal_automatico():
     # 80% chance de WIN, 20% chance de LOSS
     resultado = "WIN" if random.random() < 0.8 else "LOSS"
     
-    agora = datetime.now(ZoneInfo("America/Sao_Paulo"))
     horario_entrada = (agora + timedelta(minutes=3)).strftime("%H:%M")
     
     # Monta e envia a mensagem do sinal
@@ -175,6 +189,7 @@ Corretora: COWBEX ✅
 """
     
     await enviar_mensagem(mensagem)
+    print(f"[DEBUG] Sinal automático enviado: {ativo} {direcao}")
     
     await asyncio.sleep(360)
     await enviar_resultado_async(ativo, direcao, resultado)
@@ -189,12 +204,12 @@ def sinais_automaticos_loop():
         
         # Verifica se está no horário de funcionamento (9h às 23h)
         if 9 <= hora_atual < 23:
-            # Gera de 3 a 4 sinais por hora
-            sinais_por_hora = random.randint(3, 4)
+            # Tenta enviar 2-3 sinais por hora, mas respeitando o cooldown
+            tentativas_por_hora = random.randint(2, 3)
             
             # Calcula intervalos aleatórios dentro da hora
             intervalos = []
-            for _ in range(sinais_por_hora):
+            for _ in range(tentativas_por_hora):
                 # Gera minutos aleatórios dentro da hora atual
                 minutos_aleatorios = random.randint(0, 59)
                 proximo_sinal = agora.replace(minute=minutos_aleatorios, second=0, microsecond=0)
@@ -208,14 +223,14 @@ def sinais_automaticos_loop():
             # Ordena os intervalos
             intervalos.sort()
             
-            # Agenda os sinais
+            # Agenda os sinais (mas cada um vai verificar o cooldown individualmente)
             tasks = []
             for horario_sinal in intervalos:
                 segundos_ate_sinal = (horario_sinal - agora).total_seconds()
                 if segundos_ate_sinal > 0:
                     async def enviar_com_delay(delay):
                         await asyncio.sleep(delay)
-                        await enviar_sinal_automatico()
+                        await enviar_sinal_automatico()  # Esta função já verifica o cooldown
                     
                     tasks.append(enviar_com_delay(segundos_ate_sinal))
             
