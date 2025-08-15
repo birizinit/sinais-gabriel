@@ -135,12 +135,7 @@ Corretora: COWBEX ✅
     
     await enviar_mensagem(mensagem)
     
-    await asyncio.sleep(180)
-    
-    mensagem_entrada = f"🚀 *ENTRADA AGORA!*\n\n{d['ativo']} - {('🟢 COMPRA' if d['direcao'] == 'COMPRA' else '🔴 VENDA')}"
-    await enviar_mensagem(mensagem_entrada)
-    
-    await asyncio.sleep(180)
+    await asyncio.sleep(360)
     await enviar_resultado_async(d['ativo'], d['direcao'], d['resultado'])
 
 async def enviar_sinal_automatico():
@@ -181,12 +176,7 @@ Corretora: COWBEX ✅
     
     await enviar_mensagem(mensagem)
     
-    await asyncio.sleep(180)
-    
-    mensagem_entrada = f"🚀 *ENTRADA AGORA!*\n\n{ativo} - {('🟢 COMPRA' if direcao == 'COMPRA' else '🔴 VENDA')}"
-    await enviar_mensagem(mensagem_entrada)
-    
-    await asyncio.sleep(180)
+    await asyncio.sleep(360)
     await enviar_resultado_async(ativo, direcao, resultado)
 
 def sinais_automaticos_loop():
