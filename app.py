@@ -112,6 +112,8 @@ async def enviar_sinal_programado(d):
     
     await asyncio.sleep(segundos_ate_envio)
     
+    horario_entrada = (datetime.strptime(d["horario"], "%H:%M") + timedelta(minutes=3)).strftime("%H:%M")
+    
     # Monta e envia a mensagem do sinal
     mensagem = f"""📊 *OPERAÇÃO CONFIRMADA*
 
@@ -119,12 +121,12 @@ Corretora: COWBEX ✅
 
 🥇 *Moeda* = {d['ativo']}
 ⏰ *Expiração* = 1 Minuto
-📌 *Entrada* = {d['horario']}
+📌 *Entrada* = {horario_entrada}
 
 {('🟢 COMPRA' if d['direcao'] == 'COMPRA' else '🔴 VENDA')}
 
-⚠️ *Proteção 1:* {(datetime.strptime(d['horario'], '%H:%M') + timedelta(minutes=1)).strftime('%H:%M')}
-⚠️ *Proteção 2:* {(datetime.strptime(d['horario'], '%H:%M') + timedelta(minutes=2)).strftime('%H:%M')}
+⚠️ *Proteção 1:* {(datetime.strptime(horario_entrada, '%H:%M') + timedelta(minutes=1)).strftime('%H:%M')}
+⚠️ *Proteção 2:* {(datetime.strptime(horario_entrada, '%H:%M') + timedelta(minutes=2)).strftime('%H:%M')}
 
 ➡️ [Clique aqui para acessar a corretora](https://bit.ly/cadastre-corretora-segura)
 
@@ -133,7 +135,11 @@ Corretora: COWBEX ✅
     
     await enviar_mensagem(mensagem)
     
-    # Espera 1 min após o 2º gale para enviar resultado (total 3 min)
+    await asyncio.sleep(180)
+    
+    mensagem_entrada = f"🚀 *ENTRADA AGORA!*\n\n{d['ativo']} - {('🟢 COMPRA' if d['direcao'] == 'COMPRA' else '🔴 VENDA')}"
+    await enviar_mensagem(mensagem_entrada)
+    
     await asyncio.sleep(180)
     await enviar_resultado_async(d['ativo'], d['direcao'], d['resultado'])
 
@@ -151,9 +157,8 @@ async def enviar_sinal_automatico():
     # 80% chance de WIN, 20% chance de LOSS
     resultado = "WIN" if random.random() < 0.8 else "LOSS"
     
-    # Horário atual
     agora = datetime.now(ZoneInfo("America/Sao_Paulo"))
-    horario = agora.strftime("%H:%M")
+    horario_entrada = (agora + timedelta(minutes=3)).strftime("%H:%M")
     
     # Monta e envia a mensagem do sinal
     mensagem = f"""📊 *OPERAÇÃO CONFIRMADA*
@@ -162,12 +167,12 @@ Corretora: COWBEX ✅
 
 🥇 *Moeda* = {ativo}
 ⏰ *Expiração* = 1 Minuto
-📌 *Entrada* = {horario}
+📌 *Entrada* = {horario_entrada}
 
 {('🟢 COMPRA' if direcao == 'COMPRA' else '🔴 VENDA')}
 
-⚠️ *Proteção 1:* {(agora + timedelta(minutes=1)).strftime('%H:%M')}
-⚠️ *Proteção 2:* {(agora + timedelta(minutes=2)).strftime('%H:%M')}
+⚠️ *Proteção 1:* {(agora + timedelta(minutes=4)).strftime('%H:%M')}
+⚠️ *Proteção 2:* {(agora + timedelta(minutes=5)).strftime('%H:%M')}
 
 ➡️ [Clique aqui para acessar a corretora](https://bit.ly/cadastre-corretora-segura)
 
@@ -176,7 +181,11 @@ Corretora: COWBEX ✅
     
     await enviar_mensagem(mensagem)
     
-    # Espera 3 minutos para enviar resultado
+    await asyncio.sleep(180)
+    
+    mensagem_entrada = f"🚀 *ENTRADA AGORA!*\n\n{ativo} - {('🟢 COMPRA' if direcao == 'COMPRA' else '🔴 VENDA')}"
+    await enviar_mensagem(mensagem_entrada)
+    
     await asyncio.sleep(180)
     await enviar_resultado_async(ativo, direcao, resultado)
 
