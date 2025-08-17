@@ -8,6 +8,7 @@ import asyncio
 from zoneinfo import ZoneInfo
 import random
 from telegram import Bot
+import requests
 
 app = Flask(__name__)
 
@@ -20,10 +21,23 @@ DB_FILE = "database.json"
 ultimo_sinal_automatico = None
 INTERVALO_MINIMO_MINUTOS = 12  # Tempo mínimo entre sinais automáticos
 
+# Mapeamento dos ativos da sua base para os símbolos da Binance
+BINANCE_SYMBOLS = {
+    "BTC/USD": "BTCUSDT",
+    "ETH/USDT": "ETHUSDT",
+    "BNB/USDT": "BNBUSDT",
+    "XRP/USD": "XRPUSDT",
+    "DOGE/USD": "DOGEUSDT",
+    "SOL/USD": "SOLUSDT"
+}
+
 # Cria o arquivo JSON se não existir
 if not os.path.exists(DB_FILE):
     with open(DB_FILE, "w") as f:
-        json.dump({"ativos": ["BNB/USDT", "XRP/USD", "BTC/USD", "ETH/USDT", "DOGE/USD", "SOL/USD"], "disparos": []}, f, indent=2)
+        json.dump({
+            "ativos": list(BINANCE_SYMBOLS.keys()),
+            "disparos": []
+        }, f, indent=2)
 
 def load_db():
     with open(DB_FILE, "r") as f:
@@ -32,6 +46,25 @@ def load_db():
 def save_db(data):
     with open(DB_FILE, "w") as f:
         json.dump(data, f, indent=2)
+
+# Função para pegar preço atual da Binance
+def get_price(ativo):
+    symbol = BINANCE_SYMBOLS.get(ativo)
+    if not symbol:
+        raise ValueError(f"Ativo {ativo} não mapeado para Binance")
+    
+    url = f"https://api.binance.com/api/v3/ticker/price?symbol={symbol}"
+    resp = requests.get(url)
+    data = resp.json()
+    return float(data["price"])
+
+# Função para verificar WIN ou LOSS
+def verificar_resultado(preco_entrada, preco_final, direcao):
+    if direcao == "COMPRA":
+        return "WIN" if preco_final > preco_entrada else "LOSS"
+    elif direcao == "VENDA":
+        return "WIN" if preco_final < preco_entrada else "LOSS"
+    return "LOSS"
 
 @app.route('/')
 def index():
@@ -58,13 +91,11 @@ def disparos():
         return jsonify(db["disparos"])
     elif request.method == 'POST':
         data = request.json
-        # Espera: horario (HH:MM), ativo, direcao ("COMPRA"/"VENDA"), resultado ("WIN"/"LOSS")
         horario = data.get("horario")
         ativo = data.get("ativo")
         direcao = data.get("direcao")
-        resultado = data.get("resultado")
         
-        if not (horario and ativo and direcao and resultado):
+        if not (horario and ativo and direcao):
             return jsonify({"status": "error", "message": "Dados incompletos."}), 400
         
         # Evita duplicados exatos
@@ -72,7 +103,14 @@ def disparos():
             if d["horario"] == horario and d["ativo"] == ativo and d["direcao"] == direcao:
                 return jsonify({"status": "error", "message": "Disparo já agendado."}), 400
         
-        db["disparos"].append({"horario": horario, "ativo": ativo, "direcao": direcao, "resultado": resultado})
+        preco_entrada = get_price(ativo)
+        
+        db["disparos"].append({
+            "horario": horario,
+            "ativo": ativo,
+            "direcao": direcao,
+            "preco_entrada": preco_entrada
+        })
         save_db(db)
         return jsonify({"status": "ok", "disparos": db["disparos"]})
 
@@ -80,14 +118,15 @@ def disparos():
 async def enviar_mensagem(texto):
     await bot.send_message(chat_id=CHAT_ID, text=texto, parse_mode="Markdown")
 
-async def enviar_resultado_async(ativo, direcao, resultado):
-    print(f"Enviando resultado: {resultado} para {ativo} {direcao}")  # Debug
+async def enviar_resultado_async(ativo, direcao, preco_entrada):
+    preco_final = get_price(ativo)
+    resultado = verificar_resultado(preco_entrada, preco_final, direcao)
+    print(f"Resultado verificado: {resultado} | Entrada: {preco_entrada} | Final: {preco_final}")
     
     if resultado == "WIN":
         sticker_win = "CAACAgEAAxkBAi1jHGiaaHZB7SG-0V7xeSFmIjMhEnRlAAKmBgACsFWZRmsygMkofbBeNgQ"
         await bot.send_sticker(chat_id=CHAT_ID, sticker=sticker_win)
-        print("Sticker de vitória enviado")  # Debug
-    elif resultado == "LOSS":
+    else:
         mensagens_derrota = [
             "DEU F TROPA! Siga o gerenciamento!",
             "Siga o gerenciamento família, saiu totalmente do padrão.",
@@ -95,29 +134,22 @@ async def enviar_resultado_async(ativo, direcao, resultado):
             "Fzada família! Mas estamos extremamente assertivos! Bora pra guerra!",
             "Não respeitou esse safado, bora pra próxima"
         ]
-        
-        # Seleciona uma mensagem aleatória
         mensagem_derrota = random.choice(mensagens_derrota)
         await enviar_mensagem(mensagem_derrota)
-        print("Mensagem de derrota enviada")  # Debug
-    else:
-        print(f"Resultado inválido: {resultado}")  # Debug
 
 async def enviar_sinal_programado(d):
-    # calcula quantos segundos faltam para o horário do disparo
     agora = datetime.now(ZoneInfo("America/Sao_Paulo"))
-    horario_obj = datetime.strptime(d["horario"], "%H:%M").replace(year=agora.year, month=agora.month, day=agora.day, tzinfo=ZoneInfo("America/Sao_Paulo"))
+    horario_obj = datetime.strptime(d["horario"], "%H:%M").replace(
+        year=agora.year, month=agora.month, day=agora.day, tzinfo=ZoneInfo("America/Sao_Paulo"))
     segundos_ate_envio = (horario_obj - agora).total_seconds()
     
     if segundos_ate_envio < 0:
-        # horário já passou hoje, não envia
         return
     
     await asyncio.sleep(segundos_ate_envio)
     
     horario_entrada = (datetime.strptime(d["horario"], "%H:%M") + timedelta(minutes=3)).strftime("%H:%M")
     
-    # Monta e envia a mensagem do sinal
     mensagem = f"""📊 *OPERAÇÃO CONFIRMADA*
 
 Corretora: COWBEX ✅
@@ -135,41 +167,33 @@ Corretora: COWBEX ✅
 
 ❓ [Não sabe pegar os sinais? Clique aqui](https://t.me/c/2509048940/28)
 """
-    
     await enviar_mensagem(mensagem)
     
     await asyncio.sleep(360)
-    await enviar_resultado_async(d['ativo'], d['direcao'], d['resultado'])
+    await enviar_resultado_async(d['ativo'], d['direcao'], d['preco_entrada'])
 
 async def enviar_sinal_automatico():
     global ultimo_sinal_automatico
-    
     agora = datetime.now(ZoneInfo("America/Sao_Paulo"))
     
     if ultimo_sinal_automatico:
-        tempo_desde_ultimo = (agora - ultimo_sinal_automatico).total_seconds() / 60  # em minutos
+        tempo_desde_ultimo = (agora - ultimo_sinal_automatico).total_seconds() / 60
         if tempo_desde_ultimo < INTERVALO_MINIMO_MINUTOS:
-            print(f"[DEBUG] Sinal automático bloqueado. Faltam {INTERVALO_MINIMO_MINUTOS - tempo_desde_ultimo:.1f} minutos")
             return
     
     db = load_db()
     ativos = db.get("ativos", [])
-    
     if not ativos:
         return
     
     ultimo_sinal_automatico = agora
     
-    # Seleciona ativo e direção aleatórios
     ativo = random.choice(ativos)
     direcao = random.choice(["COMPRA", "VENDA"])
-    
-    # 80% chance de WIN, 20% chance de LOSS
-    resultado = "WIN" if random.random() < 0.8 else "LOSS"
+    preco_entrada = get_price(ativo)
     
     horario_entrada = (agora + timedelta(minutes=3)).strftime("%H:%M")
     
-    # Monta e envia a mensagem do sinal
     mensagem = f"""📊 *OPERAÇÃO CONFIRMADA*
 
 Corretora: COWBEX ✅
@@ -187,88 +211,58 @@ Corretora: COWBEX ✅
 
 ❓ [Não sabe pegar os sinais? Clique aqui](https://t.me/c/2509048940/28)
 """
-    
     await enviar_mensagem(mensagem)
-    print(f"[DEBUG] Sinal automático enviado: {ativo} {direcao}")
+    print(f"[DEBUG] Sinal automático enviado: {ativo} {direcao} | Entrada {preco_entrada}")
     
     await asyncio.sleep(360)
-    await enviar_resultado_async(ativo, direcao, resultado)
+    await enviar_resultado_async(ativo, direcao, preco_entrada)
 
 def sinais_automaticos_loop():
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-    
     while True:
         agora = datetime.now(ZoneInfo("America/Sao_Paulo"))
-        hora_atual = agora.hour
-        
-        # Verifica se está no horário de funcionamento (9h às 23h)
-        if 9 <= hora_atual < 23:
-            # Tenta enviar 2-3 sinais por hora, mas respeitando o cooldown
+        if 9 <= agora.hour < 23:
             tentativas_por_hora = random.randint(2, 3)
-            
-            # Calcula intervalos aleatórios dentro da hora
             intervalos = []
             for _ in range(tentativas_por_hora):
-                # Gera minutos aleatórios dentro da hora atual
                 minutos_aleatorios = random.randint(0, 59)
                 proximo_sinal = agora.replace(minute=minutos_aleatorios, second=0, microsecond=0)
-                
-                # Se o horário já passou, agenda para a próxima hora
                 if proximo_sinal <= agora:
-                    proximo_sinal = proximo_sinal + timedelta(hours=1)
-                
+                    proximo_sinal += timedelta(hours=1)
                 intervalos.append(proximo_sinal)
-            
-            # Ordena os intervalos
             intervalos.sort()
-            
-            # Agenda os sinais (mas cada um vai verificar o cooldown individualmente)
             tasks = []
             for horario_sinal in intervalos:
                 segundos_ate_sinal = (horario_sinal - agora).total_seconds()
                 if segundos_ate_sinal > 0:
                     async def enviar_com_delay(delay):
                         await asyncio.sleep(delay)
-                        await enviar_sinal_automatico()  # Esta função já verifica o cooldown
-                    
+                        await enviar_sinal_automatico()
                     tasks.append(enviar_com_delay(segundos_ate_sinal))
-            
             if tasks:
                 try:
                     loop.run_until_complete(asyncio.gather(*tasks))
                 except Exception as e:
-                    print(f"Erro ao enviar sinais automáticos: {e}")
-        
-        # Espera até o início da próxima hora
+                    print(f"Erro sinais automáticos: {e}")
         proxima_hora = (agora + timedelta(hours=1)).replace(minute=0, second=0, microsecond=0)
-        segundos_ate_proxima_hora = (proxima_hora - agora).total_seconds()
-        time.sleep(max(60, segundos_ate_proxima_hora))
+        time.sleep(max(60, (proxima_hora - agora).total_seconds()))
 
 def scheduler_loop():
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-    
     while True:
         db = load_db()
         agora = datetime.now(ZoneInfo("America/Sao_Paulo"))
-        
-        # Remove disparos do dia anterior (caso)
-        disparos = db.get("disparos", [])
-        
-        # Roda as tarefas pendentes para disparar os sinais agendados para hoje
         tasks = []
-        for d in disparos:
-            horario_obj = datetime.strptime(d["horario"], "%H:%M").replace(year=agora.year, month=agora.month, day=agora.day, tzinfo=ZoneInfo("America/Sao_Paulo"))
-            
-            # Se já passou, não agenda mais
+        for d in db.get("disparos", []):
+            horario_obj = datetime.strptime(d["horario"], "%H:%M").replace(
+                year=agora.year, month=agora.month, day=agora.day, tzinfo=ZoneInfo("America/Sao_Paulo"))
             if (horario_obj - agora).total_seconds() >= 0:
                 tasks.append(enviar_sinal_programado(d))
-        
         if tasks:
             loop.run_until_complete(asyncio.gather(*tasks))
-        
-        time.sleep(60)  # checa a cada 1 minuto
+        time.sleep(60)
 
 threading.Thread(target=scheduler_loop, daemon=True).start()
 threading.Thread(target=sinais_automaticos_loop, daemon=True).start()
