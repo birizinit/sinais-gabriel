@@ -61,7 +61,7 @@ def get_price(ativo):
         print(f"[ERRO] Ativo '{ativo}' não encontrado no mapeamento BINANCE_SYMBOLS.")
         return None
 
-    url = f"https://api.binance.com/api/v3/ticker/price?symbol={symbol}"
+    url = f"https://api.binance.us/api/v3/ticker/price?symbol={symbol}"
     
     try:
         resp = requests.get(url, timeout=10 ) # Adicionado timeout
