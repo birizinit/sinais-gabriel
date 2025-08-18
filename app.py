@@ -12,14 +12,19 @@ import requests
 
 app = Flask(__name__)
 
+# --- CONFIGURAÇÃO ---
+# Certifique-se de que suas variáveis de ambiente estão configuradas
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
+
+# Validação inicial para garantir que as credenciais foram carregadas
+if not BOT_TOKEN or not CHAT_ID:
+    raise ValueError("As variáveis de ambiente BOT_TOKEN e CHAT_ID não foram definidas.")
+
 bot = Bot(token=BOT_TOKEN)
 
 DB_FILE = "database.json"
-
-ultimo_sinal_automatico = None
-INTERVALO_MINIMO_MINUTOS = 12  # Tempo mínimo entre sinais automáticos
+INTERVALO_MINIMO_MINUTOS = 12
 
 # Mapeamento dos ativos da sua base para os símbolos da Binance
 BINANCE_SYMBOLS = {
@@ -31,7 +36,7 @@ BINANCE_SYMBOLS = {
     "SOL/USD": "SOLUSDT"
 }
 
-# Cria o arquivo JSON se não existir
+# --- INICIALIZAÇÃO DO BANCO DE DADOS ---
 if not os.path.exists(DB_FILE):
     with open(DB_FILE, "w") as f:
         json.dump({
@@ -47,24 +52,43 @@ def save_db(data):
     with open(DB_FILE, "w") as f:
         json.dump(data, f, indent=2)
 
-# Função para pegar preço atual da Binance
+# --- FUNÇÕES PRINCIPAIS ---
+
+# ✅ CORRIGIDO: Função para pegar preço atual da Binance de forma segura
 def get_price(ativo):
     symbol = BINANCE_SYMBOLS.get(ativo)
     if not symbol:
-        raise ValueError(f"Ativo {ativo} não mapeado para Binance")
-    
-    url = f"https://api.binance.com/api/v3/ticker/price?symbol={symbol}"
-    resp = requests.get(url)
-    data = resp.json()
-    return float(data["price"])
+        print(f"[ERRO] Ativo '{ativo}' não encontrado no mapeamento BINANCE_SYMBOLS.")
+        return None
 
-# Função para verificar WIN ou LOSS
+    url = f"https://api.binance.com/api/v3/ticker/price?symbol={symbol}"
+    
+    try:
+        resp = requests.get(url, timeout=10 ) # Adicionado timeout
+        resp.raise_for_status()  # Lança um erro para respostas HTTP ruins (4xx ou 5xx)
+        data = resp.json()
+
+        if "price" in data:
+            return float(data["price"])
+        else:
+            print(f"[ERRO] Resposta da API da Binance para o símbolo {symbol} não contém 'price'. Resposta: {data}")
+            return None
+
+    except requests.exceptions.RequestException as e:
+        print(f"[ERRO] Falha ao conectar com a API da Binance: {e}")
+        return None
+    except Exception as e:
+        print(f"[ERRO] Erro inesperado ao obter preço para {ativo}: {e}")
+        return None
+
 def verificar_resultado(preco_entrada, preco_final, direcao):
     if direcao == "COMPRA":
         return "WIN" if preco_final > preco_entrada else "LOSS"
     elif direcao == "VENDA":
         return "WIN" if preco_final < preco_entrada else "LOSS"
     return "LOSS"
+
+# --- ROTAS DA API FLASK ---
 
 @app.route('/')
 def index():
@@ -98,12 +122,14 @@ def disparos():
         if not (horario and ativo and direcao):
             return jsonify({"status": "error", "message": "Dados incompletos."}), 400
         
-        # Evita duplicados exatos
         for d in db["disparos"]:
             if d["horario"] == horario and d["ativo"] == ativo and d["direcao"] == direcao:
                 return jsonify({"status": "error", "message": "Disparo já agendado."}), 400
         
+        # ✅ CORRIGIDO: Verifica se o preço foi obtido com sucesso
         preco_entrada = get_price(ativo)
+        if preco_entrada is None:
+            return jsonify({"status": "error", "message": f"Não foi possível obter o preço do ativo {ativo}. Agendamento cancelado."}), 400
         
         db["disparos"].append({
             "horario": horario,
@@ -114,28 +140,41 @@ def disparos():
         save_db(db)
         return jsonify({"status": "ok", "disparos": db["disparos"]})
 
-# Função para enviar mensagens no Telegram
+# --- LÓGICA DO TELEGRAM (ASYNC) ---
+
 async def enviar_mensagem(texto):
-    await bot.send_message(chat_id=CHAT_ID, text=texto, parse_mode="Markdown")
+    try:
+        await bot.send_message(chat_id=CHAT_ID, text=texto, parse_mode="Markdown")
+    except Exception as e:
+        print(f"Erro ao enviar mensagem no Telegram: {e}")
 
 async def enviar_resultado_async(ativo, direcao, preco_entrada):
+    # ✅ CORRIGIDO: Verifica se o preço final foi obtido
     preco_final = get_price(ativo)
+    if preco_final is None:
+        print(f"[AVISO] Não foi possível obter o preço final para {ativo}. Verificação de resultado cancelada.")
+        await enviar_mensagem("Não foi possível verificar o resultado do último sinal por uma falha na obtenção de preço.")
+        return
+
     resultado = verificar_resultado(preco_entrada, preco_final, direcao)
     print(f"Resultado verificado: {resultado} | Entrada: {preco_entrada} | Final: {preco_final}")
     
-    if resultado == "WIN":
-        sticker_win = "CAACAgEAAxkBAi1jHGiaaHZB7SG-0V7xeSFmIjMhEnRlAAKmBgACsFWZRmsygMkofbBeNgQ"
-        await bot.send_sticker(chat_id=CHAT_ID, sticker=sticker_win)
-    else:
-        mensagens_derrota = [
-            "DEU F TROPA! Siga o gerenciamento!",
-            "Siga o gerenciamento família, saiu totalmente do padrão.",
-            "Stopou? Segue o gerenciamento!!",
-            "Fzada família! Mas estamos extremamente assertivos! Bora pra guerra!",
-            "Não respeitou esse safado, bora pra próxima"
-        ]
-        mensagem_derrota = random.choice(mensagens_derrota)
-        await enviar_mensagem(mensagem_derrota)
+    try:
+        if resultado == "WIN":
+            sticker_win = "CAACAgEAAxkBAi1jHGiaaHZB7SG-0V7xeSFmIjMhEnRlAAKmBgACsFWZRmsygMkofbBeNgQ"
+            await bot.send_sticker(chat_id=CHAT_ID, sticker=sticker_win)
+        else:
+            mensagens_derrota = [
+                "DEU F TROPA! Siga o gerenciamento!",
+                "Siga o gerenciamento família, saiu totalmente do padrão.",
+                "Stopou? Segue o gerenciamento!!",
+                "Fzada família! Mas estamos extremamente assertivos! Bora pra guerra!",
+                "Não respeitou esse safado, bora pra próxima"
+            ]
+            mensagem_derrota = random.choice(mensagens_derrota)
+            await enviar_mensagem(mensagem_derrota)
+    except Exception as e:
+        print(f"Erro ao enviar resultado no Telegram: {e}")
 
 async def enviar_sinal_programado(d):
     agora = datetime.now(ZoneInfo("America/Sao_Paulo"))
@@ -163,13 +202,13 @@ Corretora: COWBEX ✅
 ⚠️ *Proteção 1:* {(datetime.strptime(horario_entrada, '%H:%M') + timedelta(minutes=1)).strftime('%H:%M')}
 ⚠️ *Proteção 2:* {(datetime.strptime(horario_entrada, '%H:%M') + timedelta(minutes=2)).strftime('%H:%M')}
 
-➡️ [Clique aqui para acessar a corretora](https://bit.ly/cadastre-corretora-segura)
+➡️ [Clique aqui para acessar a corretora](https://bit.ly/cadastre-corretora-segura )
 
-❓ [Não sabe pegar os sinais? Clique aqui](https://t.me/c/2509048940/28)
+❓ [Não sabe pegar os sinais? Clique aqui](https://t.me/c/2509048940/28 )
 """
     await enviar_mensagem(mensagem)
     
-    await asyncio.sleep(360)
+    await asyncio.sleep(360) # Espera 6 minutos para verificação
     await enviar_resultado_async(d['ativo'], d['direcao'], d['preco_entrada'])
 
 async def enviar_sinal_automatico():
@@ -186,12 +225,16 @@ async def enviar_sinal_automatico():
     if not ativos:
         return
     
-    ultimo_sinal_automatico = agora
-    
     ativo = random.choice(ativos)
     direcao = random.choice(["COMPRA", "VENDA"])
-    preco_entrada = get_price(ativo)
     
+    # ✅ CORRIGIDO: Verifica se o preço foi obtido com sucesso
+    preco_entrada = get_price(ativo)
+    if preco_entrada is None:
+        print(f"[AVISO] Não foi possível obter o preço para o ativo {ativo}. Sinal automático cancelado.")
+        return
+
+    ultimo_sinal_automatico = agora
     horario_entrada = (agora + timedelta(minutes=3)).strftime("%H:%M")
     
     mensagem = f"""📊 *OPERAÇÃO CONFIRMADA*
@@ -207,15 +250,19 @@ Corretora: COWBEX ✅
 ⚠️ *Proteção 1:* {(agora + timedelta(minutes=4)).strftime('%H:%M')}
 ⚠️ *Proteção 2:* {(agora + timedelta(minutes=5)).strftime('%H:%M')}
 
-➡️ [Clique aqui para acessar a corretora](https://bit.ly/cadastre-corretora-segura)
+➡️ [Clique aqui para acessar a corretora](https://bit.ly/cadastre-corretora-segura )
 
-❓ [Não sabe pegar os sinais? Clique aqui](https://t.me/c/2509048940/28)
+❓ [Não sabe pegar os sinais? Clique aqui](https://t.me/c/2509048940/28 )
 """
     await enviar_mensagem(mensagem)
     print(f"[DEBUG] Sinal automático enviado: {ativo} {direcao} | Entrada {preco_entrada}")
     
-    await asyncio.sleep(360)
+    await asyncio.sleep(360) # Espera 6 minutos
     await enviar_resultado_async(ativo, direcao, preco_entrada)
+
+# --- LOOPS DE EXECUÇÃO EM BACKGROUND ---
+
+ultimo_sinal_automatico = None
 
 def sinais_automaticos_loop():
     loop = asyncio.new_event_loop()
@@ -244,7 +291,8 @@ def sinais_automaticos_loop():
                 try:
                     loop.run_until_complete(asyncio.gather(*tasks))
                 except Exception as e:
-                    print(f"Erro sinais automáticos: {e}")
+                    # O erro original acontecia aqui. Agora a função interna já trata.
+                    print(f"Erro no loop de sinais automáticos: {e}")
         proxima_hora = (agora + timedelta(hours=1)).replace(minute=0, second=0, microsecond=0)
         time.sleep(max(60, (proxima_hora - agora).total_seconds()))
 
@@ -255,19 +303,32 @@ def scheduler_loop():
         db = load_db()
         agora = datetime.now(ZoneInfo("America/Sao_Paulo"))
         tasks = []
+        disparos_validos = []
+        
         for d in db.get("disparos", []):
             horario_obj = datetime.strptime(d["horario"], "%H:%M").replace(
                 year=agora.year, month=agora.month, day=agora.day, tzinfo=ZoneInfo("America/Sao_Paulo"))
-            if (horario_obj - agora).total_seconds() >= 0:
+            
+            # Processa apenas sinais de hoje que ainda não passaram
+            if horario_obj.date() == agora.date() and horario_obj > agora:
                 tasks.append(enviar_sinal_programado(d))
+                disparos_validos.append(d)
+
         if tasks:
             loop.run_until_complete(asyncio.gather(*tasks))
+        
+        # Limpa os disparos que já passaram para não serem reprocessados
+        db['disparos'] = disparos_validos
+        save_db(db)
+
         time.sleep(60)
 
-threading.Thread(target=scheduler_loop, daemon=True).start()
-threading.Thread(target=sinais_automaticos_loop, daemon=True).start()
+# --- INICIALIZAÇÃO DO SERVIDOR ---
 
 if __name__ == '__main__':
+    threading.Thread(target=scheduler_loop, daemon=True).start()
+    threading.Thread(target=sinais_automaticos_loop, daemon=True).start()
+    
     port = int(os.getenv('PORT', 5000))
     debug = os.getenv('FLASK_DEBUG', '0') == '1'
     app.run(host='0.0.0.0', port=port, debug=debug)
