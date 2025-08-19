@@ -31,7 +31,8 @@ BINANCE_SYMBOLS = {
     "BTC/USD": "BTCUSDT",
     "ETH/USDT": "ETHUSDT",
     "BSC/USDT": "BNBUSDT",
-    "XRP/USD": "XRPUSDT",
+    "XRP/USDT": "XRPUSDT",
+    "ADA/USDT": "ADAUSDT",
     "DOGE/USD": "DOGEUSDT",
     "SOL/USD": "SOLUSDT"
 }
