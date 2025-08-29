@@ -269,7 +269,7 @@ def sinais_automaticos_loop():
     while True:
         agora = datetime.now(ZoneInfo("America/Sao_Paulo"))
         if 9 <= agora.hour < 23:
-            tentativas_por_hora = random.randint(2, 3)
+            tentativas_por_hora = random.randint(1, 2)
             intervalos = []
             for _ in range(tentativas_por_hora):
                 minutos_aleatorios = random.randint(0, 59)
